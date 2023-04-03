@@ -2,3 +2,7 @@ spring:
   redis:
     host: ${REDIS_HOST}
     port: 6379
+  mvc:
+    pathmatch:
+      matching:
+        strategey: ant_path_matcher
