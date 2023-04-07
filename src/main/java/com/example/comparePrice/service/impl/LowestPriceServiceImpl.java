@@ -1,5 +1,6 @@
 package com.example.comparePrice.service.impl;
 
+import com.example.comparePrice.exception.PriceCompareException;
 import com.example.comparePrice.service.LowestPriceService;
 import com.example.comparePrice.vo.Keyword;
 import com.example.comparePrice.vo.Product;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -25,9 +27,12 @@ public class LowestPriceServiceImpl implements LowestPriceService {
     public Set getZSetValue(String key) {
         ZSetOperations operations = productPriceRedisTemplate.opsForZSet();
         Set set = operations.rangeWithScores(key, 0, 9); // ZRange
-        Long size = operations.size(key);   // ZCard
 
-        log.info("Size : {}, Value: {}", size, set.toString());
+        if(set.size() == 0){
+            throw new PriceCompareException(HttpStatus.BAD_REQUEST, "Empty Set.");
+        }
+
+        log.info("Size : {}, Value: {}", set.size(), set.toString());
 
         return set;
     }
@@ -73,6 +78,9 @@ public class LowestPriceServiceImpl implements LowestPriceService {
         튜플: (Keyword, Product Group Id, Score) -> 이때 score 는 keyword 랑 ProductGroupId 의 관련도 점수 -> ZSet은 score 오름차순으로 정렬되기 때문에, reverseRage로 해서 내림차순으로 10개 가져오기
          */
         List<String> productGroupIds = operations.reverseRange(keyword, 0, 9).stream().toList();
+        if(productGroupIds.size() == 1){
+            throw new PriceCompareException(HttpStatus.NOT_FOUND, "No matching keyword.");
+        }
 
         List<ProductGroup> productGroups = new ArrayList<>();
         for (String productGroupId : productGroupIds) { // 각 productGroupId 확인해서, 각 productGroupId에 속한 제품들 가져오기
